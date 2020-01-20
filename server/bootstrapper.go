@@ -18,6 +18,9 @@ func SetUp() (err error) {
 	if err = initConfig(); err != nil {
 		log.Fatalln("[configuration]:", err)
 	}
+	if err = initDatabase(); err != nil {
+		log.Fatalln("[database initialization]:", err)
+	}
 	return
 }
 

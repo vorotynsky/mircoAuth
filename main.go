@@ -17,7 +17,10 @@ func (m msg) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	server.SetUp()
+	if err := server.SetUp(); err != nil {
+		panic("Server set up error.")
+	}
+	defer server.CloseDatabaseConnection()
 
 	handler := msg("hello from go")
 	httpSrv := &http.Server{Addr: server.Configuration.Host, Handler: handler}
