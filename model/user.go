@@ -10,9 +10,16 @@ import (
 )
 
 type User struct {
-	UserID       int32
-	UserName     string
+	UserData     UserData
 	PasswordHash []byte
+}
+type UserWithPurePassword struct {
+	UserData UserData
+	Password string
+}
+type UserData struct {
+	UserID   int32
+	UserName string
 }
 
 func NewUser(id int32, name string, password string) *User {
@@ -21,7 +28,7 @@ func NewUser(id int32, name string, password string) *User {
 		log.Println("[NewUser]:", err)
 		return nil
 	}
-	return &User{UserID: id, UserName: name, PasswordHash: hash}
+	return &User{UserData{id, name}, hash}
 }
 
 func (usr *User) ConfirmPassword(password string) error {
@@ -29,4 +36,13 @@ func (usr *User) ConfirmPassword(password string) error {
 		return errors.New("User is null")
 	}
 	return bcrypt.CompareHashAndPassword(usr.PasswordHash, []byte(password))
+}
+
+func (usr *UserWithPurePassword) HashPassword() *User {
+	hash, err := bcrypt.GenerateFromPassword([]byte(usr.Password), bcrypt.MinCost)
+	if err != nil {
+		log.Println("[NewUser]:", err)
+		return nil
+	}
+	return &User{usr.UserData, hash}
 }

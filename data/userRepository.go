@@ -14,13 +14,13 @@ type SqlUserRepository struct {
 
 func (repo *SqlUserRepository) GetUserById(id int32) (user model.User, err error) {
 	row := repo.Database.QueryRow("select userId, userName, passwordHash from users where userId = ?", id)
-	err = row.Scan(&user.UserID, &user.UserName, &user.PasswordHash)
+	err = row.Scan(&user.UserData.UserName, &user.UserData.UserName, &user.PasswordHash)
 	return
 }
 
 func (repo *SqlUserRepository) GetUserByName(userName string) (user model.User, err error) {
 	row := repo.Database.QueryRow("select userId, userName, passwordHash from users where userName = ?", userName)
-	err = row.Scan(&user.UserID, &user.UserName, &user.PasswordHash)
+	err = row.Scan(&user.UserData.UserName, &user.UserData.UserName, &user.PasswordHash)
 	return
 }
 
@@ -35,7 +35,7 @@ func (repo *SqlUserRepository) Create(user *model.User) (err error) {
 	if err != nil {
 		return
 	}
-	res, err := stmt.Exec(user.UserName, user.PasswordHash)
+	res, err := stmt.Exec(user.UserData.UserName, user.PasswordHash)
 	if err != nil {
 		return
 	}
@@ -44,7 +44,7 @@ func (repo *SqlUserRepository) Create(user *model.User) (err error) {
 		return
 	}
 
-	user.UserID = int32(id)
+	user.UserData.UserID = int32(id)
 
 	if err = tx.Commit(); err != nil {
 		return
@@ -55,13 +55,13 @@ func (repo *SqlUserRepository) Create(user *model.User) (err error) {
 
 func (repo *SqlUserRepository) Update(user *model.User) (err error) {
 	res, err := repo.Database.Exec("update users SET userName = ?, passwordHash = ? where userId = ?",
-		user.UserName, user.PasswordHash, user.UserID)
+		user.UserData.UserName, user.PasswordHash, user.UserData.UserName)
 	if err != nil {
 		return
 	}
 	id, err := checkRowCount(res)
-	if id != int64(user.UserID) {
-		fmt.Errorf("Expected to update user %d, updated %d.\n", user.UserID, id)
+	if id != int64(user.UserData.UserID) {
+		fmt.Errorf("Expected to update user %d, updated %d.\n", user.UserData.UserName, id)
 	}
 	return
 }
