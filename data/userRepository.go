@@ -1,7 +1,10 @@
+// Copyright (c) 2020 Vorotynsky Maxim
+
 package data
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"microAuth/model"
 
@@ -9,23 +12,38 @@ import (
 )
 
 type SqlUserRepository struct {
-	Database *sql.DB
+	GetDatabase func() *sql.DB
 }
 
-func (repo *SqlUserRepository) GetUserById(id int32) (user model.User, err error) {
-	row := repo.Database.QueryRow("select userId, userName, passwordHash from users where userId = ?", id)
-	err = row.Scan(&user.UserData.UserName, &user.UserData.UserName, &user.PasswordHash)
+func (repo SqlUserRepository) GetUserById(id int32) (user model.User, err error) {
+	db := repo.GetDatabase()
+	if db == nil {
+		err = errors.New("Database connection error. ")
+		return
+	}
+	row := db.QueryRow("select userId, userName, passwordHash from users where userId = ?", id)
+	err = row.Scan(&user.UserData.UserID, &user.UserData.UserName, &user.PasswordHash)
 	return
 }
 
-func (repo *SqlUserRepository) GetUserByName(userName string) (user model.User, err error) {
-	row := repo.Database.QueryRow("select userId, userName, passwordHash from users where userName = ?", userName)
-	err = row.Scan(&user.UserData.UserName, &user.UserData.UserName, &user.PasswordHash)
+func (repo SqlUserRepository) GetUserByName(userName string) (user model.User, err error) {
+	db := repo.GetDatabase()
+	if db == nil {
+		err = errors.New("Database connection error. ")
+		return
+	}
+	row := db.QueryRow("select userId, userName, passwordHash from users where userName = ?", userName)
+	err = row.Scan(&user.UserData.UserID, &user.UserData.UserName, &user.PasswordHash)
 	return
 }
 
-func (repo *SqlUserRepository) Create(user *model.User) (err error) {
-	tx, err := repo.Database.Begin()
+func (repo SqlUserRepository) Create(user *model.User) (err error) {
+	db := repo.GetDatabase()
+	if db == nil {
+		err = errors.New("Database connection error. ")
+		return
+	}
+	tx, err := db.Begin()
 	if err != nil {
 		return
 	}
@@ -53,8 +71,13 @@ func (repo *SqlUserRepository) Create(user *model.User) (err error) {
 	return
 }
 
-func (repo *SqlUserRepository) Update(user *model.User) (err error) {
-	res, err := repo.Database.Exec("update users SET userName = ?, passwordHash = ? where userId = ?",
+func (repo SqlUserRepository) Update(user *model.User) (err error) {
+	db := repo.GetDatabase()
+	if db == nil {
+		err = errors.New("Database connection error. ")
+		return
+	}
+	res, err := db.Exec("update users SET userName = ?, passwordHash = ? where userId = ?",
 		user.UserData.UserName, user.PasswordHash, user.UserData.UserName)
 	if err != nil {
 		return
@@ -66,16 +89,26 @@ func (repo *SqlUserRepository) Update(user *model.User) (err error) {
 	return
 }
 
-func (repo *SqlUserRepository) DeleteById(id int32) (err error) {
-	res, err := repo.Database.Exec("delete from users where userId = ?", id)
+func (repo SqlUserRepository) DeleteById(id int32) (err error) {
+	db := repo.GetDatabase()
+	if db == nil {
+		err = errors.New("Database connection error. ")
+		return
+	}
+	res, err := db.Exec("delete from users where userId = ?", id)
 	if err == nil {
 		_, err = checkRowCount(res)
 	}
 	return
 }
 
-func (repo *SqlUserRepository) DeleteByName(userName string) (err error) {
-	res, err := repo.Database.Exec("delete from users where userName = ?", userName)
+func (repo SqlUserRepository) DeleteByName(userName string) (err error) {
+	db := repo.GetDatabase()
+	if db == nil {
+		err = errors.New("Database connection error. ")
+		return
+	}
+	res, err := db.Exec("delete from users where userName = ?", userName)
 	if err == nil {
 		_, err = checkRowCount(res)
 	}

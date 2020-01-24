@@ -5,14 +5,17 @@ package server
 import (
 	"database/sql"
 	"log"
+	"microAuth/data"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 var database *sql.DB
+var UserRepository data.UserRepository
 
 func initDatabase() (err error) {
 	database, err = sql.Open("mysql", Configuration.ConnString)
+	UserRepository = data.SqlUserRepository{GetDatabaseConnection}
 	return
 }
 

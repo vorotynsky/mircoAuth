@@ -3,18 +3,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"microAuth/routers"
 	"microAuth/server"
 	"net/http"
 	"sync"
 )
-
-type msg string
-
-func (m msg) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	fmt.Fprint(resp, m)
-}
 
 func main() {
 	if err := server.SetUp(); err != nil {
@@ -22,7 +16,7 @@ func main() {
 	}
 	defer server.CloseDatabaseConnection()
 
-	handler := msg("hello from go")
+	handler := routers.InitRouters()
 	httpSrv := &http.Server{Addr: server.Configuration.Host, Handler: handler}
 
 	// Run the server
