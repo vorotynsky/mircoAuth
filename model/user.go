@@ -4,45 +4,72 @@ package model
 
 import (
 	"errors"
-	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+type UserID int32
+
 type User struct {
-	UserData     UserData
-	PasswordHash []byte
-}
-type UserWithPurePassword struct {
-	UserData UserData
-	Password string
-}
-type UserData struct {
-	UserID   int32
-	UserName string
+	UserID UserID
+	Claims ClaimSet
 }
 
-func NewUser(id int32, name string, password string) *User {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+func NewUser(id UserID, name string, password string) *User {
+	claimSet := NewClaimSet()
+	claimSet.SetClaim(NewStirngClaim(UserName, name))
+
+	passC, err := NewPasswordClaim(password)
 	if err != nil {
-		log.Println("[NewUser]:", err)
 		return nil
 	}
-	return &User{UserData{id, name}, hash}
+	claimSet.SetClaim(passC)
+
+	return &User{id, claimSet}
+}
+
+func NewUserWithHashedPass(id UserID, name string, password []byte) User {
+	claimSet := NewClaimSet()
+	claimSet.SetClaim(NewStirngClaim(UserName, name))
+	claimSet.SetClaim(Claim{Password, HashValue{password}})
+
+	return User{id, claimSet}
 }
 
 func (usr *User) ConfirmPassword(password string) error {
 	if usr == nil {
-		return errors.New("User is null")
+		return errors.New("user is null ")
 	}
-	return bcrypt.CompareHashAndPassword(usr.PasswordHash, []byte(password))
+	claim, err := usr.Claims.GetClaim(Password)
+	if err != nil {
+		return err
+	}
+	if hash, ok := claim.Value.(HashValue); !ok {
+		return bcrypt.CompareHashAndPassword(hash.Hash, []byte(password))
+	}
+	return errors.New("Password claim doesn't contains password hash. ")
 }
 
-func (usr *UserWithPurePassword) HashPassword() *User {
-	hash, err := bcrypt.GenerateFromPassword([]byte(usr.Password), bcrypt.MinCost)
+func (usr *User) HashUserPassword() ([]byte, error) {
+	passClaim, err := usr.Claims.GetClaim(Password)
 	if err != nil {
-		log.Println("[NewUser]:", err)
-		return nil
+		return nil, err
 	}
-	return &User{usr.UserData, hash}
+	hashVal, ok := passClaim.Value.(HashValue)
+	if !ok {
+		newPassCalim, err := NewPasswordClaim(passClaim.Value.GetValue())
+		if err != nil {
+			return nil, err
+		}
+		usr.Claims.SetClaim(newPassCalim)
+		passClaim, err = usr.Claims.GetClaim(Password)
+		if err != nil {
+			return nil, err
+		}
+		if hashVal, ok = passClaim.Value.(HashValue); !ok {
+			err = errors.New("[HashUserPassword]: post hash error. ")
+			return nil, err
+		}
+	}
+	return hashVal.Hash, nil
 }

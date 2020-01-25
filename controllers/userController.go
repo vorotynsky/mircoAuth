@@ -4,7 +4,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"errors"
 	"microAuth/data"
 	"microAuth/model"
 	"microAuth/server"
@@ -18,18 +17,6 @@ type UserController struct {
 	Repository data.UserRepository
 }
 
-type (
-	userResource struct {
-		User model.User `json:"data"`
-	}
-	userDataResource struct {
-		UserData model.UserData `json:"data"`
-	}
-	userWithPasswordResource struct {
-		User model.UserWithPurePassword `json:"data"`
-	}
-)
-
 func (controller *UserController) GetUserById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userId, errFlag := controller.parseId(vars, w)
@@ -38,7 +25,7 @@ func (controller *UserController) GetUserById(w http.ResponseWriter, r *http.Req
 	}
 
 	if user, err := controller.Repository.GetUserById(userId); err == nil {
-		writeUser(user.UserData, w)
+		writeUser(user, w)
 		return
 	}
 	http.NotFound(w, r)
@@ -47,7 +34,7 @@ func (controller *UserController) GetUserById(w http.ResponseWriter, r *http.Req
 func (controller *UserController) GetUserByName(w http.ResponseWriter, r *http.Request) {
 	userName := mux.Vars(r)["name"]
 	if user, err := controller.Repository.GetUserByName(userName); err == nil {
-		writeUser(user.UserData, w)
+		writeUser(user, w)
 		return
 	}
 	http.NotFound(w, r)
@@ -80,22 +67,23 @@ func (controller *UserController) DeleteUserByUserName(w http.ResponseWriter, r 
 }
 
 func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var dataResource userWithPasswordResource
+	var dataResource userResource
 	if err := json.NewDecoder(r.Body).Decode(&dataResource); err != nil {
 		server.DisplayError(w, err, "Invalid user data", http.StatusBadRequest)
 		return
 	}
-	user := dataResource.User.HashPassword()
-	if user == nil {
-		server.DisplayError(w, errors.New("User password isn't hashed."),
+	var user model.User = restoreResource(dataResource)
+	_, err := user.HashUserPassword()
+	if err != nil {
+		server.DisplayError(w, err,
 			"Oops... Registration has been failed.", http.StatusInternalServerError)
 		return
 	}
-	if err := controller.Repository.Create(user); err != nil {
+	if err := controller.Repository.Create(&user); err != nil {
 		server.DisplayError(w, err, "Oops... Registration has been failed.", http.StatusInternalServerError)
 		return
 	}
-	writeUser(dataResource.User.UserData, w)
+	writeUser(user, w)
 }
 
 func (controller *UserController) parseId(vars map[string]string, w http.ResponseWriter) (int32, bool) {
@@ -107,8 +95,8 @@ func (controller *UserController) parseId(vars map[string]string, w http.Respons
 	return int32(userId), false
 }
 
-func writeUser(user model.UserData, w http.ResponseWriter) error {
-	data, err := json.Marshal(userDataResource{user})
+func writeUser(user model.User, w http.ResponseWriter) error {
+	data, err := json.Marshal(makeResourse(user))
 	if err != nil {
 		server.DisplayError(w, err, "Something goes wrong...", http.StatusInternalServerError)
 		return err

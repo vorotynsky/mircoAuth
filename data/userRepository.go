@@ -22,7 +22,11 @@ func (repo SqlUserRepository) GetUserById(id int32) (user model.User, err error)
 		return
 	}
 	row := db.QueryRow("select userId, userName, passwordHash from users where userId = ?", id)
-	err = row.Scan(&user.UserData.UserID, &user.UserData.UserName, &user.PasswordHash)
+	var uid model.UserID
+	var name string
+	var pass []byte
+	err = row.Scan(&uid, &name, &pass)
+	user = model.NewUserWithHashedPass(uid, name, pass)
 	return
 }
 
@@ -33,7 +37,11 @@ func (repo SqlUserRepository) GetUserByName(userName string) (user model.User, e
 		return
 	}
 	row := db.QueryRow("select userId, userName, passwordHash from users where userName = ?", userName)
-	err = row.Scan(&user.UserData.UserID, &user.UserData.UserName, &user.PasswordHash)
+	var uid model.UserID
+	var name string
+	var pass []byte
+	err = row.Scan(&uid, &name, &pass)
+	user = model.NewUserWithHashedPass(uid, name, pass)
 	return
 }
 
@@ -53,7 +61,17 @@ func (repo SqlUserRepository) Create(user *model.User) (err error) {
 	if err != nil {
 		return
 	}
-	res, err := stmt.Exec(user.UserData.UserName, user.PasswordHash)
+
+	hash, err := user.HashUserPassword()
+	if err != nil {
+		return
+	}
+	userName, err := user.Claims.GetClaim(model.UserName)
+	if err != nil {
+		return
+	}
+
+	res, err := stmt.Exec(userName.Value.GetValue(), hash)
 	if err != nil {
 		return
 	}
@@ -62,7 +80,7 @@ func (repo SqlUserRepository) Create(user *model.User) (err error) {
 		return
 	}
 
-	user.UserData.UserID = int32(id)
+	user.UserID = model.UserID(id)
 
 	if err = tx.Commit(); err != nil {
 		return
@@ -77,14 +95,25 @@ func (repo SqlUserRepository) Update(user *model.User) (err error) {
 		err = errors.New("Database connection error. ")
 		return
 	}
+
+	userName, err := user.Claims.GetClaim(model.UserName)
+	if err != nil {
+		return
+	}
+	passHash, err := user.HashUserPassword()
+	if err != nil {
+		return
+	}
+
 	res, err := db.Exec("update users SET userName = ?, passwordHash = ? where userId = ?",
-		user.UserData.UserName, user.PasswordHash, user.UserData.UserName)
+		userName, passHash, user.UserID)
+
 	if err != nil {
 		return
 	}
 	id, err := checkRowCount(res)
-	if id != int64(user.UserData.UserID) {
-		fmt.Errorf("Expected to update user %d, updated %d.\n", user.UserData.UserName, id)
+	if id != int64(user.UserID) {
+		fmt.Errorf("Expected to update user %d, updated %d.\n", userName, id)
 	}
 	return
 }
