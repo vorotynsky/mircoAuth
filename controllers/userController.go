@@ -67,12 +67,12 @@ func (controller *UserController) DeleteUserByUserName(w http.ResponseWriter, r 
 }
 
 func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var dataResource userResource
+	var dataResource model.UserResource
 	if err := json.NewDecoder(r.Body).Decode(&dataResource); err != nil {
 		server.DisplayError(w, err, "Invalid user data", http.StatusBadRequest)
 		return
 	}
-	var user model.User = restoreResource(dataResource)
+	var user model.User = model.RestoreResource(dataResource)
 	_, err := user.HashUserPassword()
 	if err != nil {
 		server.DisplayError(w, err,
@@ -96,7 +96,7 @@ func (controller *UserController) parseId(vars map[string]string, w http.Respons
 }
 
 func writeUser(user model.User, w http.ResponseWriter) error {
-	data, err := json.Marshal(makeResourse(user))
+	data, err := json.Marshal(model.MakeResourse(user))
 	if err != nil {
 		server.DisplayError(w, err, "Something goes wrong...", http.StatusInternalServerError)
 		return err

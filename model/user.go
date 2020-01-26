@@ -73,3 +73,7 @@ func (usr *User) HashUserPassword() ([]byte, error) {
 	}
 	return hashVal.Hash, nil
 }
+
+func (usr *User) DeletePrivates() {
+	usr.Claims.RemoveClaim(Password)
+}
