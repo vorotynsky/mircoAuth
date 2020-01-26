@@ -5,11 +5,12 @@ package server
 import (
 	"encoding/json"
 	"log"
+	"microAuth/model"
 	"os"
 )
 
 type config struct {
-	Host, ConnString string
+	Host, ConnString, JwtSecret string
 }
 
 var Configuration config
@@ -18,6 +19,7 @@ func SetUp() (err error) {
 	if err = initConfig(); err != nil {
 		log.Fatalln("[configuration]:", err)
 	}
+	model.SetSecretToken(Configuration.JwtSecret)
 	if err = initDatabase(); err != nil {
 		log.Fatalln("[database initialization]:", err)
 	}

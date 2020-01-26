@@ -1,4 +1,5 @@
 {
     "Host": "localhost:3000",
-    "ConnString": "microAuth:microService@tcp(127.0.0.1:3306)/microAuthDB"
+    "ConnString": "microAuth:microService@tcp(127.0.0.1:3306)/microAuthDB",
+    "JwtSecret": "micro-jwt-secret"
 }
