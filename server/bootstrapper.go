@@ -5,7 +5,6 @@ package server
 import (
 	"encoding/json"
 	"log"
-	"microAuth/model"
 	"os"
 )
 
@@ -19,7 +18,6 @@ func SetUp() (err error) {
 	if err = initConfig(); err != nil {
 		log.Fatalln("[configuration]:", err)
 	}
-	model.SetSecretToken(Configuration.JwtSecret)
 	if err = initDatabase(); err != nil {
 		log.Fatalln("[database initialization]:", err)
 	}

@@ -11,31 +11,35 @@ import (
 
 type Token string
 
-type jwtClaims struct {
-	UserResource
-	jwt.StandardClaims
+type (
+	jwtClaims struct {
+		UserResource
+		jwt.StandardClaims
+	}
+
+	JwtSecret jwt.Keyfunc
+)
+
+func NewJwtSecret(secret string) JwtSecret {
+	return func(_ *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	}
 }
 
-func (user User) GenerateToken() (Token, error) {
+func (user User) GenerateToken(keyToken JwtSecret, lifeTime time.Duration) (Token, error) {
 	user.DeletePrivates()
 	jwtClaims := jwtClaims{
 		UserResource: MakeResourse(user),
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(1 * time.Hour).Unix(),
+			ExpiresAt: time.Now().Add(lifeTime).Unix(),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtClaims)
-	secret, _ := keyToken(nil)
-	tokenString, err := token.SignedString(secret)
-	if err != nil {
-		return "", err
-	}
-	return Token(tokenString), nil
+	return makeToken(jwtClaims, keyToken)
 }
 
-func (tokenStr Token) DecryptToken() (*User, error) {
+func (tokenStr Token) DecryptToken(keyToken JwtSecret) (*User, error) {
 	claims := &jwtClaims{}
-	token, err := jwt.ParseWithClaims(string(tokenStr), claims, keyToken)
+	token, err := jwt.ParseWithClaims(string(tokenStr), claims, jwt.Keyfunc(keyToken))
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +50,39 @@ func (tokenStr Token) DecryptToken() (*User, error) {
 	return &user, nil
 }
 
-//for fix import cycle
-var keyToken func(_ *jwt.Token) (interface{}, error)
-
-func SetSecretToken(secret string) {
-	keyToken = func(_ *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
+func (tokenStr *Token) Refresh(keyToken JwtSecret, lifeTime time.Duration) error {
+	claims := &jwtClaims{}
+	if err := parseWithClaims(*tokenStr, claims, keyToken); err != nil {
+		return err
 	}
+
+	claims.ExpiresAt = time.Now().Add(lifeTime).Unix()
+	tokenString, err := makeToken(*claims, keyToken)
+	if err != nil {
+		return err
+	}
+
+	*tokenStr = Token(tokenString)
+	return nil
+}
+
+func makeToken(claims jwtClaims, keyToken JwtSecret) (Token, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	secret, _ := keyToken(nil)
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+	return Token(tokenString), nil
+}
+
+func parseWithClaims(tokenStr Token, claims *jwtClaims, keyToken JwtSecret) error {
+	token, err := jwt.ParseWithClaims(string(tokenStr), claims, jwt.Keyfunc(keyToken))
+	if err != nil {
+		return err
+	}
+	if !token.Valid {
+		return errors.New("Token isn't valid. ")
+	}
+	return nil
 }
