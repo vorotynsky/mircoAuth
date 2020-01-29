@@ -5,12 +5,21 @@ package server
 import (
 	"encoding/json"
 	"log"
+	"microAuth/model"
 	"os"
 )
 
-type config struct {
-	Host, ConnString, JwtSecret string
-}
+type (
+	jwtConfig struct {
+		JwtSecret       string
+		DefaultDuration model.Duration
+		MaxDuration     model.Duration
+	}
+	config struct {
+		Host, ConnString string
+		JwtConfig        jwtConfig
+	}
+)
 
 var Configuration config
 

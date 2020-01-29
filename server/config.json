@@ -1,5 +1,9 @@
 {
     "Host": "localhost:3000",
     "ConnString": "microAuth:microService@tcp(127.0.0.1:3306)/microAuthDB",
-    "JwtSecret": "micro-jwt-secret"
+    "JwtConfig": {
+        "JwtSecret": "micro-jwt-secret",
+        "DefaultDuration": "1h0m0s",
+        "MaxDuration": "24h0m0s"
+    }
 }

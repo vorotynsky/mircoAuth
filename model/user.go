@@ -44,7 +44,7 @@ func (usr *User) ConfirmPassword(password string) error {
 	if err != nil {
 		return err
 	}
-	if hash, ok := claim.Value.(HashValue); !ok {
+	if hash, ok := claim.Value.(HashValue); ok {
 		return bcrypt.CompareHashAndPassword(hash.Hash, []byte(password))
 	}
 	return errors.New("Password claim doesn't contains password hash. ")
